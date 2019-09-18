@@ -9,7 +9,7 @@ import { HomeComponent } from './home/home.component';
 import {HttpClientModule, HttpClient, HTTP_INTERCEPTORS } from '@angular/common/http';
 import {MatSidenavModule} from '@angular/material/sidenav';
 import {FlexLayoutModule} from '@angular/flex-layout';
-import { SitmunPluginCoreModule, AuthInterceptor,AuthExpiredInterceptor, UserChangePasswordComponent,LoginComponent,LoginService,AccountEditComponent,AccountChangePasswordComponent,HasAnyAuthorityDirective,HasAnyAuthorityOnTerritoryDirective,ServiceListComponent,ServiceEditComponent } from 'sitmun-plugin-core';
+import { SitmunPluginCoreModule, AuthInterceptor,AuthExpiredInterceptor, UserChangePasswordComponent,LoginComponent,LoginService,AccountEditComponent,AccountChangePasswordComponent,HasAnyAuthorityDirective,HasAnyAuthorityOnTerritoryDirective,ServiceListComponent,ServiceEditComponent,MapConfigurationManagerService } from 'sitmun-plugin-core';
 
 const appRoutes: Routes = [
     {
@@ -72,7 +72,9 @@ const appRoutes: Routes = [
             provide: HTTP_INTERCEPTORS,
             useClass: AuthExpiredInterceptor,
             multi: true
-        }
+        },
+        //Map Configuration Service
+        MapConfigurationManagerService
     ],
     bootstrap: [AppComponent]
 })
