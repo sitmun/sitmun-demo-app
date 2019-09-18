@@ -1,0 +1,219 @@
+plugins {
+  id "org.sonarqube" version "2.6.2"
+  id "com.moowork.node" version "1.2.0"
+  id "org.ajoberstar.grgit" version "2.2.0"
+  id "org.springframework.boot" version "1.5.8.RELEASE"
+  id "com.palantir.docker" version "0.20.1"
+}
+
+// Output result file type definition
+//- use 'java' value to create a JAR file
+//- use 'war' value to create a deployable WAR file
+//apply plugin: 'java'
+apply plugin: 'java'
+
+def targetJavaVersion = JavaVersion.VERSION_1_8;
+sourceCompatibility = "${targetJavaVersion}"
+targetCompatibility = "${targetJavaVersion}"
+
+
+apply plugin: 'maven-publish'
+apply plugin: 'jacoco'
+apply plugin: 'io.spring.dependency-management'
+apply plugin: 'com.palantir.docker'
+apply plugin: 'com.palantir.docker-run'
+
+apply plugin: 'idea'
+apply plugin: 'eclipse'
+
+group = 'org.sitmun'
+version = "${sitmun_version}"
+
+repositories {
+  mavenLocal()
+  mavenCentral()
+}
+
+// Dependencies to other SITMUN plugins must be declared all here to facilitate using them
+// in different places of this script
+ext {
+  sitmunlibs = [:]
+  sitmunlibs.sitmuncore = [
+    gitrepo   : 'https://github.com/sitmun/sitmun-plugin-core.git',
+    groupId   : 'org.sitmun',
+    artifactId: 'sitmun-plugin-core',
+    version   : 'master'
+  ]
+}
+
+dependencies {
+  sitmunlibs.each { k, v -> compile "${v.groupId}:${v.artifactId}:${v.version}" }
+
+  if (project.hasProperty('oracle')) {
+    compile "com.zaxxer:HikariCP:${hikaricp_version}"
+    compile "com.oracle:ojdbc7:${ojdbc7_version}"
+  } else if (project.hasProperty('postgresql')) {
+    compile "com.zaxxer:HikariCP:${hikaricp_version}"
+    compile "org.postgresql:postgresql:${postgresql_version}"
+  } else {
+    compile 'com.h2database:h2'
+    compile 'org.springframework.boot:spring-boot-devtools'
+  }
+
+  testImplementation 'org.springframework.boot:spring-boot-starter-test'
+  testImplementation 'com.h2database:h2'
+}
+
+def profiles = 'h2'
+
+bootRun {
+  if (project.hasProperty('h2')) {
+    profiles = 'h2'
+  } else if (project.hasProperty('oracle')) {
+    profiles = 'oracle'
+  } else if (project.hasProperty('postgresql')) {
+    profiles = 'postgresql'
+  }
+  args = ["--spring.profiles.active=" + profiles]
+}
+
+task checkJavaVersion {
+    if (!JavaVersion.current().equals(targetJavaVersion)) {
+        String message = """
+ERROR: Java ${targetJavaVersion} JDK required but ${JavaVersion.current()} found. 
+SOLUTION: 
+  a) Point JAVA_HOME to a ${targetJavaVersion} JDK and then run gradle, or
+  b) Run ./gradlew -Dorg.gradle.java.home=/path_to_jdk_${targetJavaVersion}_directory"""
+        throw new GradleException(message)
+    }
+}
+
+compileJava.dependsOn checkJavaVersion
+
+publishing {
+  publications {
+    mavenJava(MavenPublication) {
+      groupId group
+      artifactId 'sitmun-demo-app'
+      version version
+
+      from components.java
+    }
+  }
+}
+
+sonarqube {
+  properties {
+    property 'sonar.host.url', 'https://sonarcloud.io'
+    property 'sonar.organization', 'sitmun'
+    properties["sonar.sources"] += 'src/main/angular'  
+  }  
+}
+
+
+sourceSets {
+  main {
+    resources {
+      srcDirs = ["$projectDir/dist", "$projectDir/src/main/resources"]
+    }
+  }
+}
+
+def cloneDir = file("$buildDir/plugins-src")
+
+task clonePlugins {
+  description = 'Clone SITMUN plugins from GitHub".'
+  doLast {
+    if (!cloneDir.exists()) {
+      mkdir cloneDir
+    }
+    sitmunlibs.each { k, v ->
+      def targetDir = file("$cloneDir/${v.artifactId}")
+      if (!targetDir.exists()) {
+        println "$v.gitrepo $v.version"
+        grgit.clone {
+          dir = targetDir
+          uri = "${v.gitrepo}"
+          refToCheckout = "${v.version}"
+        }
+      }
+    }
+  }
+}
+
+clonePlugins.mustRunAfter clean
+
+task installPlugins(dependsOn: clonePlugins) {
+  description = 'Install Plugins.'
+  doLast {
+    // It creates a temporary GradleBuild task for each sitmun dependency in sitmunlibs
+    // and runs the specified tasks for each
+    sitmunlibs.each { k,v ->
+      def targetDir = file("$cloneDir/${v.artifactId}/dist")
+      if (!targetDir.exists()) {
+        def tempTask = tasks.create(name: "install_module_${v.artifactId}", type: GradleBuild)
+        tempTask.dir = file("$cloneDir/${v.artifactId}")
+        tempTask.startParameter.projectProperties["customVersion"] = v.version
+        tempTask.tasks = [ "install" ]
+        tempTask.execute()
+      }
+    }
+  }
+}
+
+installPlugins.mustRunAfter clonePlugins
+
+task installModules(dependsOn: [installPlugins, npmInstall]) {
+  doLast {
+    sitmunlibs.values().each {
+      def sourceDir = "$cloneDir/${it.artifactId}/dist" 
+      ant.copy(todir: "node_modules") {
+        fileset(dir: sourceDir)
+      } 
+    }
+  }
+}
+
+installModules.mustRunAfter installPlugins
+installModules.mustRunAfter npmInstall
+
+task buildApp(dependsOn: installModules) {
+  doLast {
+    def build = tasks.create(name: "buildAppToo", type: NpmTask)
+    build.args = ['run-script', 'build']
+    build.execute()
+  }
+}
+
+buildApp.mustRunAfter installModules
+
+compileJava.dependsOn installPlugins 
+compileJava.mustRunAfter installPlugins 
+
+processResources.dependsOn buildApp
+processResources.mustRunAfter buildApp
+
+task install(dependsOn: publishToMavenLocal)
+
+clean {
+  delete "node_modules"
+  delete "dist"
+  delete "database"
+}
+
+docker {
+  def projectJar = "${project.name}-${project.version}.jar"
+  dockerfile file("src/main/docker/Dockerfile")
+  name "${project.group}/${project.name}:${project.version}".toLowerCase()
+  copySpec.from("${buildDir}/libs/").into(".")
+  buildArgs(['JAR_FILE': projectJar])
+}
+
+dockerRun {
+  name project.name
+  image "${project.group}/${project.name}:${project.version}".toLowerCase()
+  clean false
+  ports '8080:8080'
+}
+
+dockerRemoveContainer.shouldRunAfter dockerStop
