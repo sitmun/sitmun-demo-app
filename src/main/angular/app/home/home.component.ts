@@ -49,10 +49,6 @@ export class HomeComponent implements OnInit {
 
   configureMap() {
 
-    if (console && console.log) {
-      console.log("Configure map");
-    }
-
     // Set map configuration
     let mapOptionsConfiguration = new MapOptionsConfiguration();
     mapOptionsConfiguration.scales = 
