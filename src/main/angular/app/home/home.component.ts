@@ -17,6 +17,10 @@ export class HomeComponent implements OnInit {
   // Defines if the component is listening to any map configuration changes             
   subscribedToConfigManagerService = false;
   ngOnInit() {
+    //Set the language in case it has not been selected yet
+    if ((this.translationService.currentLang == null) || (this.translationService.currentLang == undefined)) {
+      this.translationService.use(this.translationService.defaultLang);
+    }
     //Wait for the map component status to be loaded (the map component is fully initialized and ready to be configured)
     var mapStatusListener = this.mapConfigurationManagerService.getMapComponentStatusListener().subscribe(
       (status:MapComponentStatus[]) => {
@@ -243,7 +247,7 @@ export class HomeComponent implements OnInit {
     layer["visibility"] = true;
     layer["queryable"] = true; //Should a layer have this attribue set to true a Get Feature Information tool will be shown on the map to
                                // retrieve the available information of a point clicked on the map
-    layer["opacity"] = 0.35;
+    layer["opacity"] = 0.2;
     layer["attributions"] = "© IGME (Instituto Geologico y Minero de España)";
     layer["url_transparent"] = "TRUE"; 
     layer["url_bgcolor"] = "0x000000";
@@ -342,7 +346,6 @@ export class HomeComponent implements OnInit {
     situationMapConfiguration.push(layer);
 
     this.mapConfigurationManagerService.loadSituationMapConfiguration(situationMapConfiguration);
-        
   }
 
 }
