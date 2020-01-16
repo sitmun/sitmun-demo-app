@@ -4,12 +4,13 @@ import { RouterModule, Routes } from '@angular/router';
 import { AppComponent } from './app.component';
 import { environment } from '../environments/environment';
 import { ExternalConfigurationService } from './ExternalConfigurationService';
-import { AngularHalModule } from 'angular-hal';
+// import { AngularHalModule } from '@sitmun/frontend-core';
 import { HomeComponent } from './home/home.component';
 import {HttpClientModule, HttpClient, HTTP_INTERCEPTORS } from '@angular/common/http';
 import {MatSidenavModule} from '@angular/material/sidenav';
 import {FlexLayoutModule} from '@angular/flex-layout';
-import { SitmunPluginCoreModule, AuthInterceptor,AuthExpiredInterceptor, UserChangePasswordComponent,LoginComponent,LoginService,AccountEditComponent,AccountChangePasswordComponent,HasAnyAuthorityDirective,HasAnyAuthorityOnTerritoryDirective,ServiceListComponent,ServiceEditComponent,MapConfigurationManagerService } from 'sitmun-plugin-core';
+import { SitmunFrontendCoreModule, AuthInterceptor,AuthExpiredInterceptor, LoginService, MapConfigurationManagerService } from '@sitmun/frontend-core';
+import { SitmunFrontendGuiModule, UserChangePasswordComponent,LoginComponent,AccountEditComponent,AccountChangePasswordComponent, ServiceListComponent,ServiceEditComponent } from '@sitmun/frontend-gui';
 
 const appRoutes: Routes = [
     {
@@ -54,9 +55,9 @@ const appRoutes: Routes = [
     imports: [
         BrowserModule,
         FlexLayoutModule,
-        SitmunPluginCoreModule,
+        SitmunFrontendCoreModule.forRoot(),
+        SitmunFrontendGuiModule,
         MatSidenavModule,
-        AngularHalModule.forRoot(),
         RouterModule.forRoot(appRoutes)
     ],
     entryComponents: [

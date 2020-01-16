@@ -30,24 +30,22 @@ group = 'org.sitmun'
 version = "${sitmun_version}"
 
 repositories {
-  mavenLocal()
-  mavenCentral()
+    mavenLocal()
+    mavenCentral()
+    maven {
+        name = "GitHubPackages"
+        url = uri("https://maven.pkg.github.com/sitmun/sitmun-backend-core")
+        credentials {
+            username = project.findProperty("gpr.user") ?: System.getenv("USERNAME")            
+            password = project.findProperty("gpr.key") ?: System.getenv("GITHUB_API_KEY")
+        }
+    }
 }
 
-// Dependencies to other SITMUN plugins must be declared all here to facilitate using them
-// in different places of this script
-ext {
-  sitmunlibs = [:]
-  sitmunlibs.sitmuncore = [
-    gitrepo   : 'https://github.com/sitmun/sitmun-plugin-core.git',
-    groupId   : 'org.sitmun',
-    artifactId: 'sitmun-plugin-core',
-    version   : 'master'
-  ]
-}
 
 dependencies {
-  sitmunlibs.each { k, v -> compile "${v.groupId}:${v.artifactId}:${v.version}" }
+    
+  compile ("org.sitmun:sitmun-backend-core:0.7+")
 
   if (project.hasProperty('oracle')) {
     compile "com.zaxxer:HikariCP:${hikaricp_version}"
@@ -119,76 +117,13 @@ sourceSets {
   }
 }
 
-def cloneDir = file("$buildDir/plugins-src")
-
-task clonePlugins {
-  description = 'Clone SITMUN plugins from GitHub".'
-  doLast {
-    if (!cloneDir.exists()) {
-      mkdir cloneDir
-    }
-    sitmunlibs.each { k, v ->
-      def targetDir = file("$cloneDir/${v.artifactId}")
-      if (!targetDir.exists()) {
-        println "$v.gitrepo $v.version"
-        grgit.clone {
-          dir = targetDir
-          uri = "${v.gitrepo}"
-          refToCheckout = "${v.version}"
-        }
-      }
-    }
-  }
-}
-
-clonePlugins.mustRunAfter clean
-
-task installPlugins(dependsOn: clonePlugins) {
-  description = 'Install Plugins.'
-  doLast {
-    // It creates a temporary GradleBuild task for each sitmun dependency in sitmunlibs
-    // and runs the specified tasks for each
-    sitmunlibs.each { k,v ->
-      def targetDir = file("$cloneDir/${v.artifactId}/dist")
-      if (!targetDir.exists()) {
-        def tempTask = tasks.create(name: "install_module_${v.artifactId}", type: GradleBuild)
-        tempTask.dir = file("$cloneDir/${v.artifactId}")
-        tempTask.startParameter.projectProperties["customVersion"] = v.version
-        tempTask.tasks = [ "install" ]
-        tempTask.execute()
-      }
-    }
-  }
-}
-
-installPlugins.mustRunAfter clonePlugins
-
-task installModules(dependsOn: [installPlugins, npmInstall]) {
-  doLast {
-    sitmunlibs.values().each {
-      def sourceDir = "$cloneDir/${it.artifactId}/dist" 
-      ant.copy(todir: "node_modules") {
-        fileset(dir: sourceDir)
-      } 
-    }
-  }
-}
-
-installModules.mustRunAfter installPlugins
-installModules.mustRunAfter npmInstall
-
-task buildApp(dependsOn: installModules) {
+task buildApp(dependsOn: npmInstall) {
   doLast {
     def build = tasks.create(name: "buildAppToo", type: NpmTask)
     build.args = ['run-script', 'build']
     build.execute()
   }
 }
-
-buildApp.mustRunAfter installModules
-
-compileJava.dependsOn installPlugins 
-compileJava.mustRunAfter installPlugins 
 
 processResources.dependsOn buildApp
 processResources.mustRunAfter buildApp

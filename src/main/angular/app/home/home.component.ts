@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import {TranslateService} from '@ngx-translate/core';
 import {Principal,LoginService,MapConfigurationManagerService, Layer, LayerGroup, MapOptionsConfiguration,
-        OptionalParameter, MapComponentStatus} from 'sitmun-plugin-core';
+        OptionalParameter, MapComponentStatus} from '@sitmun/frontend-core';
 
 @Component({
   selector: 'app-home',

@@ -33,7 +33,7 @@
 
 SITMUN applications are basically Angular applications on client side that communicates with Spring Boot on the server side via REST API.
 
-In this document we will focus on the Angular client side development. SITMUN Angular application development is based on [SITMUN Core Angular Library](https://github.com/sitmun/sitmun-plugin-core/tree/master/src/main/angular-library) and [Angular Material](https://material.angular.io/) components.
+In this document we will focus on the Angular client side development. SITMUN Angular application development is based on [SITMUN Core Angular Library](https://github.com/sitmun/@sitmun/frontend-core/tree/master/src/main/angular-library) and [Angular Material](https://material.angular.io/) components.
 
 In order to develop an Angular SITMUN application, there are a handful of setup steps to go through that vary based on your app environment. In order to simplify the process, we provide a demo application, that you can take advantage of it.
 Generally, the steps are:
@@ -264,7 +264,7 @@ In order to add a map viewer component to our home component, first we have to m
 
 ```ts
 ...
-import { MapConfigurationManagerService } from 'sitmun-plugin-core';
+import { MapConfigurationManagerService } from '@sitmun/frontend-core';
 ...
 providers: [
     ...
@@ -301,7 +301,7 @@ import {Principal,
         LayerGroup,
         MapOptionsConfiguration,
         OptionalParameter,
-        MapComponentStatus} from 'sitmun-plugin-core';
+        MapComponentStatus} from '@sitmun/frontend-core';
 ```
 
 Then we inject [``MapConfigurationManagerService``](https://sitmun.github.io/doc-angular/injectables/MapConfigurationManagerService.html) in HomeComponent creation by adding to the constructor method:
